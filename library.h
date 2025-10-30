@@ -1,6 +1,0 @@
-#ifndef CANSECKOD_LIBRARY_H
-#define CANSECKOD_LIBRARY_H
-
-void hello();
-
-#endif //CANSECKOD_LIBRARY_H
