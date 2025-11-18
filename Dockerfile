@@ -12,10 +12,16 @@ RUN apt-get update && \
       libssl-dev openssl \
       clang lldb \
       cppcheck valgrind \
-    && rm -rf /var/lib/apt/lists/*
+      libgtest-dev \
+    && cd /usr/src/googletest && \
+       cmake -S . -B build && \
+       cmake --build build --config Release && \
+       cp build/lib/*.a /usr/lib && \
+    rm -rf /var/lib/apt/lists/*
 
 # 4
 WORKDIR /work
+
 
 # from terminal write : docker build -t cansec-dev-new-thesis:latest .    We create an image file
 
