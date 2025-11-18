@@ -8,6 +8,7 @@
 #include <queue>
 #include <mutex>
 #include <atomic>
+#include <vector>
 #include "Tipler.h"
 
 class CANFD {
@@ -50,7 +51,7 @@ public:
      *                 The callback receives the CANFDStruct containing the received data.
      *                 Can be nullptr if no callback is needed (data will still be queued).
      */
-    void  ReceiveMessage(const std::string &socketname, const std::function<void(const CANFDStruct&)>& callback);
+    void  ReceiveMessage(const std::string &socketname, std::function<void( CANFDStruct)>& callback);
 
     /**
      *
@@ -59,7 +60,7 @@ public:
      *                 The callback receives the CANFDStruct containing the received data.
      *                 Can be nullptr if no callback is needed (data will still be queued).
      */
-    void ThreadReceiveMessage(const std::string &socketname, std::function<void(const CANFDStruct&)> callback);
+    void ThreadReceiveMessage(const std::string &socketname, std::function<void( CANFDStruct)> callback);
 
 
     /**
@@ -75,7 +76,7 @@ public:
      * @param frame_len The length of the message
      * @param data The data to send
      */
-    void ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, const char* data);
+    void ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, std::vector<uint8_t> data);
     ~CANFD();
     
 private:

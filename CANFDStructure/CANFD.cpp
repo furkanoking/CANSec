@@ -25,6 +25,12 @@ CANFD::~CANFD() {
 
 bool CANFD::setNetworkInterfaceUp(const std::string &interfaceName, const std::string &portName) {
     // Implementation to set up the network interface
+    // Validate interface name length to prevent buffer overflow
+    if (interfaceName.length() >= IFNAMSIZ) {
+        std::cerr << "Interface name too long (max " << (IFNAMSIZ - 1) << " characters): " << interfaceName << std::endl;
+        return false;
+    }
+    
     ifreq the_ifreq{};
     std::strcpy(the_ifreq.ifr_name,interfaceName.c_str());
 
@@ -85,14 +91,16 @@ bool CANFD::CreateSocket(const std::string &socketname) {
     }
 }
 
-void CANFD::ReceiveMessage(const std::string &socketname, const std::function<void(const CANFDStruct&)>& callback) {
+void CANFD::ReceiveMessage(const std::string &socketname, std::function<void(CANFDStruct)>& callback) {
+    // Pass callback by value to avoid use-after-free: the thread gets its own copy
+    // Pass socketname by value for the same reason
     std::jthread ThreadListening(&CANFD::ThreadReceiveMessage, this, socketname, callback);
 
     // Move the thread to the global thread variable. This will ensure that only one background listening thread is active at any time
     backgroundListeningThread = std::move(ThreadListening);
 }
 
-void CANFD::ThreadReceiveMessage(const std::string &socketname, std::function<void(const CANFDStruct&)>& callback) {
+void CANFD::ThreadReceiveMessage(const std::string &socketname, std::function<void( CANFDStruct)> callback) {
     int socket_value{-99};
 
     {
@@ -142,11 +150,13 @@ void CANFD::setReceievedData(const CANFDStruct &data) {
 
 
 void CANFD::SendMessage(const std::string &socketname, const int ID, const int frame_len, const char* data) {
-    std::jthread ThreadSending(&CANFD::ThreadSendMessage, this, socketname, ID, frame_len, data);
+    // Copy data to avoid dangling pointer: the thread gets its own copy
+    std::vector<uint8_t> data_copy(data, data + frame_len); //TODO is it necessary? 
+    std::jthread ThreadSending(&CANFD::ThreadSendMessage, this, socketname, ID, frame_len, std::move(data_copy));
     backgroundSendingThread = std::move(ThreadSending);
 }
 
-void CANFD::ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, const char* data) {
+void CANFD::ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, std::vector<uint8_t> data) {
     int socket_value{-99};
     {
         std::scoped_lock<std::mutex> lock(m_mutexSocketMap);
@@ -162,7 +172,7 @@ void CANFD::ThreadSendMessage(const std::string &socketname, const int ID, const
     canfd_frame the_sending_frame{};
     the_sending_frame.can_id = ID;
     the_sending_frame.len = frame_len;
-    std::memcpy(the_sending_frame.data, data, frame_len);
+    std::memcpy(the_sending_frame.data, data.data(), frame_len);
 
     std::cout<<"Trying to send message"<<std::endl;
 
