@@ -13,7 +13,7 @@
 
 class CANFD {
 public:
-    CANFD() = delete;
+    CANFD() = default;
     CANFD(const CANFD&) = delete;
     CANFD& operator=(const CANFD&) = delete;
     CANFD(CANFD&&) = delete;
@@ -40,7 +40,9 @@ public:
     /**
      *
      * @param socketname The name of the socket to send the message to
-     * @
+     * @param ID The CAN ID of the message to send
+     * @param frame_len The length of the frame data
+     * @param data Pointer to the data to send
      */
     void SendMessage(const std::string &socketname, const int ID, const int frame_len, const char* data);
 
@@ -51,7 +53,7 @@ public:
      *                 The callback receives the CANFDStruct containing the received data.
      *                 Can be nullptr if no callback is needed (data will still be queued).
      */
-    void  ReceiveMessage(const std::string &socketname, std::function<void( CANFDStruct)>& callback);
+    void  ReceiveMessage(const std::string &socketname, const std::function<void( CANFDStruct)>&  callback);
 
     /**
      *
@@ -78,6 +80,12 @@ public:
      */
     void ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, std::vector<uint8_t> data);
     ~CANFD();
+
+    /**
+     * @brief Set the ID of the CANFD instance
+     * @param ID The ID to set
+     */
+    void setID(const int&);
     
 private:
     /**

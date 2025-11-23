@@ -46,7 +46,7 @@ bool CANFD::setNetworkInterfaceUp(const std::string &interfaceName, const std::s
     }
 
     try {
-        if (int interfaceCheck = ioctl(socket_fd, SIOCGIFFLAGS, &the_ifreq); interfaceCheck < 0) {
+        if (int interfaceCheck = ioctl(socket_fd, SIOCGIFINDEX, &the_ifreq); interfaceCheck < 0) {
             std::cerr<<" Interface is not valid"<<std::endl;
             return false;
         }
@@ -60,9 +60,14 @@ bool CANFD::setNetworkInterfaceUp(const std::string &interfaceName, const std::s
     sockaddr_can the_sockaddr_can{};
     the_sockaddr_can.can_family = AF_CAN;
     the_sockaddr_can.can_ifindex = the_ifreq.ifr_ifindex;
-
-    if (bind(socket_fd, reinterpret_cast<sockaddr *>(&the_sockaddr_can), sizeof(the_sockaddr_can)) < 0) {
+    std::cout<<"debug. socket:"<<socket_fd<<std::endl;
+    if (int error_no = bind(socket_fd, reinterpret_cast<sockaddr *>(&the_sockaddr_can), sizeof(the_sockaddr_can));error_no < 0) {
         std::cerr<<"Error binding socket"<<std::endl;
+        std::cerr<<"Error number:"<<error_no<<std::endl;
+
+        int err = errno;
+        std::cerr << "bind failed, errno = " << err
+                  << " -> " << std::strerror(err) << '\n';
         return false;
     }
     else {
@@ -81,17 +86,20 @@ bool CANFD::CreateSocket(const std::string &socketname) {
         // Enable CAN FD supporta
         if (int enable_canfd = 1; setsockopt(sock, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &enable_canfd, sizeof(enable_canfd)) < 0) {
             std::cerr << "Error enabling CAN FD support on socket" << std::endl;
+
             close(sock);
             return false;
         }
 
         std::scoped_lock<std::mutex> lock(m_mutexSocketMap);
+        std::cout<<"Socket created successfully: "<<socketname<<std::endl;
+        std::cout<<"Socket ID:"<<sock<<std::endl;
         m_mapSocket[socketname] = sock;
         return true;
     }
 }
 
-void CANFD::ReceiveMessage(const std::string &socketname, std::function<void(CANFDStruct)>& callback) {
+void CANFD::ReceiveMessage(const std::string &socketname, const std::function<void(CANFDStruct)>& callback) {
     // Pass callback by value to avoid use-after-free: the thread gets its own copy
     // Pass socketname by value for the same reason
     std::jthread ThreadListening(&CANFD::ThreadReceiveMessage, this, socketname, callback);
@@ -180,4 +188,8 @@ void CANFD::ThreadSendMessage(const std::string &socketname, const int ID, const
         std::cerr << "Error sending message" << std::endl;
         return;
     }
+}
+
+void CANFD::setID(const int& ID) {
+    m_iID = ID;
 }
