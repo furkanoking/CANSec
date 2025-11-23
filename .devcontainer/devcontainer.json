@@ -1,0 +1,23 @@
+{
+  "name": "Furkan GTest Ortamı",
+  // Proje kökünde duran Dockerfile'dan build et
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  // Konteyner içinde çalışma klasörü
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  // Lokaldeki klasörü konteynere bağla
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools-extension-pack",
+        "kylin.cmake-intellisense"
+      ]
+    }
+  },
+  "remoteUser": "root"
+}
