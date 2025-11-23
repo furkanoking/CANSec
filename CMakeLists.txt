@@ -48,3 +48,19 @@ target_link_libraries(test_main PRIVATE
         GTest::gtest_main # gtest_main zaten gtest'i ve Threads'i getirecek
         Threads::Threads
 )
+
+add_executable(test_linux tests/sendandreceive.cpp)
+target_link_libraries(test_linux PRIVATE
+        CANSecKod
+        GTest::gtest_main
+        Threads::Threads
+)
+target_include_directories(test_linux PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/CANFDStructure)
+
+add_executable(receiver tests/receiver.cpp)
+target_link_libraries(receiver PRIVATE
+        CANSecKod
+        GTest::gtest_main
+        Threads::Threads
+)
+target_include_directories(receiver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/CANFDStructure)
