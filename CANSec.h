@@ -27,13 +27,19 @@ public:
      */
     std::array<__uint8_t,32> getKey() ;
 
+    /**
+     * @brief set the nonce value (for testing or when nonce needs to be shared)
+     * @param nonce The nonce value to set (must be 12 bytes)
+     */
+    void setNonce(const std::array<__uint8_t,12> &nonce);
+
     void EncryptMessage(const std::span<__uint8_t> plaintext, const int& plaintext_len, std::span<__uint8_t> ciphertext, int& ciphertext_len,std::span<__uint8_t> tag) const;
 
     void DecryptMessage(const std::span<__uint8_t> ciphertext, const int& ciphertext_len, std::span<__uint8_t> plaintext, int& plaintext_len, const std::span<__uint8_t> expected_tag) const;
 
 private:
     /**
-     * @brief Mutex to protect access to the key
+     * @brief Mutex to protect access to the key and nonce
      */
     std::mutex m_mutexKey{};
 
