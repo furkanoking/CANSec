@@ -9,6 +9,7 @@
 
 #include "GlobalThreads.h"
 #include "Tipler.h"
+#include "CANSec.h"
 
 CANFD::~CANFD() {
     if (m_threadReceive.joinable()) {
@@ -131,10 +132,35 @@ void CANFD::ThreadReceiveMessage(const std::string &socketname, std::function<vo
                 continue;
             }
 
+            // We will compare the received counter with the message counter
+            // If the received counter is lower than the message counter, the message will be discarded
+            // Prevent the replay attacks
+            int temp_counter = -1;
+            if (the_listening_frame.len > MAX_CANFD_DATA_LEN + TAG_LENGTH + COUNTER_LENGTH) {
+                std::cerr<<"Received frame length is invalid. Message will be discarded"<<std::endl;
+                continue;
+             }
+
+             std::memcpy(&temp_counter, (the_listening_frame.data) + MAX_CIPHERTEXT_LENGTH + TAG_LENGTH, COUNTER_LENGTH);
+
+             if(temp_counter < getCounter()) {
+             
+                 std::cout<<"Received counter is lower than the message counter. Message will be discarded"<<std::endl;
+                 continue;
+             }
+
             the_CANFD.CANID = the_listening_frame.can_id;
             the_CANFD.LENGTH = the_listening_frame.len;
             the_CANFD.FLAGS = the_listening_frame.flags;
             std::memcpy(the_CANFD.DATA, the_listening_frame.data, the_listening_frame.len);
+
+
+            {
+                std::scoped_lock<std::mutex> lock(m_mutexCounter);
+                ++counter_message;
+            }
+
+
 
             // Call customer callback first (if provided) - allows immediate processing
             if (callback) {
@@ -165,6 +191,13 @@ void CANFD::SendMessage(const std::string &socketname, const int ID, const int f
 }
 
 void CANFD::ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, std::vector<uint8_t> data) {
+
+    {
+        // increment the counter of the message. This is used for compare with the received counter of the message
+        std::scoped_lock<std::mutex> lock(m_mutexCounter);
+        counter_message++;
+    }
+
     int socket_value{-99};
     {
         std::scoped_lock<std::mutex> lock(m_mutexSocketMap);
@@ -192,4 +225,52 @@ void CANFD::ThreadSendMessage(const std::string &socketname, const int ID, const
 
 void CANFD::setID(const int& ID) {
     m_iID = ID;
+}
+
+void CANFD::ReceivedCallbackfunction(const CANFDStruct &data) {
+        std::cout<<"Received message"<<std::endl;
+
+        int ciphertext_len = data.LENGTH - 16;
+        std::array<__uint8_t, 32> ciphertext{};
+        std::array<__uint8_t, 16> tag{};
+
+        // Copy ciphertext
+        std::memcpy(ciphertext.data(), data.DATA, data.LENGTH - 16);
+        // Copy tag (last 16 bytes)
+        std::memcpy(tag.data(), data.DATA + data.LENGTH - 16, 16);
+
+        CANSec cansec;
+        std::array<__uint8_t,32> key = {};
+        cansec.setKey(key);
+        // Set the same nonce as the sender (must match!)
+        std::array<__uint8_t,12> nonce = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b};
+        cansec.setNonce(nonce);
+
+        std::array<__uint8_t,32> plaintext{};
+        int plaintext_len = 0;
+
+        cansec.DecryptMessage(
+            std::span<__uint8_t>(ciphertext.data(), ciphertext_len),
+            ciphertext_len,
+            std::span<__uint8_t>(plaintext.data(), plaintext.size()),
+            plaintext_len,
+            std::span<__uint8_t>(tag.data(), tag.size())
+        );
+
+        std::cout << "Decrypted plaintext length: " << plaintext_len << std::endl;
+        std::cout << "Plaintext (hex): ";
+        for (int i = 0; i < plaintext_len; i++) {
+            std::cout << std::hex << static_cast<int>(plaintext[i]) << " ";
+        }
+        std::cout << std::dec << std::endl;
+}
+    
+int CANFD::getCounter() {
+    std::scoped_lock<std::mutex> lock(m_mutexCounter);
+    return counter_message;
+}
+
+void CANFD::IncrementCounter() {
+    std::scoped_lock<std::mutex> lock(m_mutexCounter);
+    ++counter_message;
 }

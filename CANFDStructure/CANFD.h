@@ -86,6 +86,24 @@ public:
      * @param ID The ID to set
      */
     void setID(const int&);
+
+    /**
+     * @brief Callback function to handle the received data
+     * @param data The received data
+     */
+    static void ReceivedCallbackfunction(const CANFDStruct &data);
+
+
+    /**
+     * @brief Get the counter of the message
+     * @return The counter of the message
+     */
+    int getCounter();
+
+    /**
+     * @brief Increment the counter of the message
+     */
+    void IncrementCounter();
     
 private:
     /**
@@ -119,6 +137,18 @@ private:
      * Mutex to protect the received data queue from concurrent access
      */
     mutable std::mutex m_mutexQueue{};
+
+    /**
+     * Mutex to protect the counter of the message from concurrent access
+     */
+    std::mutex m_mutexCounter{};
+
+    /**
+     * Counter to store the number of messages received
+     * This is used for compare with the received counter of the message
+     * If the received counter is lower than the counter of the message, the message will be discarded
+     */
+    int counter_message{0};
 
 };
 #endif
