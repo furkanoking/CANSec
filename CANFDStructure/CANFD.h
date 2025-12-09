@@ -8,11 +8,12 @@
 #include <queue>
 #include <mutex>
 #include <atomic>
+#include <vector>
 #include "Tipler.h"
 
 class CANFD {
 public:
-    CANFD() = delete;
+    CANFD() = default;
     CANFD(const CANFD&) = delete;
     CANFD& operator=(const CANFD&) = delete;
     CANFD(CANFD&&) = delete;
@@ -39,7 +40,9 @@ public:
     /**
      *
      * @param socketname The name of the socket to send the message to
-     * @
+     * @param ID The CAN ID of the message to send
+     * @param frame_len The length of the frame data
+     * @param data Pointer to the data to send
      */
     void SendMessage(const std::string &socketname, const int ID, const int frame_len, const char* data);
 
@@ -50,7 +53,7 @@ public:
      *                 The callback receives the CANFDStruct containing the received data.
      *                 Can be nullptr if no callback is needed (data will still be queued).
      */
-    void  ReceiveMessage(const std::string &socketname, const std::function<void(const CANFDStruct&)>& callback);
+    void  ReceiveMessage(const std::string &socketname, const std::function<void( CANFDStruct)>&  callback);
 
     /**
      *
@@ -59,7 +62,7 @@ public:
      *                 The callback receives the CANFDStruct containing the received data.
      *                 Can be nullptr if no callback is needed (data will still be queued).
      */
-    void ThreadReceiveMessage(const std::string &socketname, std::function<void(const CANFDStruct&)> callback);
+    void ThreadReceiveMessage(const std::string &socketname, std::function<void( CANFDStruct)> callback);
 
 
     /**
@@ -75,8 +78,32 @@ public:
      * @param frame_len The length of the message
      * @param data The data to send
      */
-    void ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, const char* data);
+    void ThreadSendMessage(const std::string &socketname, const int ID, const int frame_len, std::vector<uint8_t> data);
     ~CANFD();
+
+    /**
+     * @brief Set the ID of the CANFD instance
+     * @param ID The ID to set
+     */
+    void setID(const int&);
+
+    /**
+     * @brief Callback function to handle the received data
+     * @param data The received data
+     */
+    static void ReceivedCallbackfunction(const CANFDStruct &data);
+
+
+    /**
+     * @brief Get the counter of the message
+     * @return The counter of the message
+     */
+    int getCounter();
+
+    /**
+     * @brief Increment the counter of the message
+     */
+    void IncrementCounter();
     
 private:
     /**
@@ -110,6 +137,18 @@ private:
      * Mutex to protect the received data queue from concurrent access
      */
     mutable std::mutex m_mutexQueue{};
+
+    /**
+     * Mutex to protect the counter of the message from concurrent access
+     */
+    std::mutex m_mutexCounter{};
+
+    /**
+     * Counter to store the number of messages received
+     * This is used for compare with the received counter of the message
+     * If the received counter is lower than the counter of the message, the message will be discarded
+     */
+    int counter_message{0};
 
 };
 #endif

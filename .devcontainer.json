@@ -1,0 +1,23 @@
+{
+  "name": "Furkan GTest Ortamı",
+
+  // EN ÖNEMLİ KISIM:
+  // Dockerfile'dan "build" etme, bunun yerine "image" (imaj) kullan
+  "image": "furkan-dev-with-gtest:latest",
+
+  // (Öneri) Gerekli VS Code eklentilerinin konteyner içinde de kurulmasını sağlar
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools-extension-pack",
+        "kylin.cmake-intellisense"
+      ]
+    }
+  },
+
+  // Komut satırınız 'root@...' olduğu için bunu eklemek
+  // konteynerin root olarak çalışmasını garantiler.
+  "remoteUser": "root"
+}
