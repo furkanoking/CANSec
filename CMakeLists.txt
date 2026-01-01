@@ -64,3 +64,37 @@ target_link_libraries(receiver PRIVATE
         Threads::Threads
 )
 target_include_directories(receiver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/CANFDStructure)
+
+
+# canbus-common include
+target_include_directories(CANSecKod PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/third-party-library/canbus-common/include
+)
+
+# canbus-common .so imported target
+set(CANBUS_COMMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party-library/canbus-common")
+
+
+add_library(canbus-common SHARED IMPORTED)
+
+set_target_properties(canbus-common PROPERTIES
+  IMPORTED_LOCATION "${CANBUS_COMMON_DIR}/libcanbus_common.so"
+  INTERFACE_INCLUDE_DIRECTORIES "${CANBUS_COMMON_DIR}"
+)
+
+# link
+target_link_libraries(CANSecKod PUBLIC canbus-common)
+
+
+# for testing we link the dynamic library 
+add_executable(counter_test tests/counter_test.cpp)
+target_link_libraries(counter_test PRIVATE CANSecKod)
+
+install(TARGETS counter_test
+    RUNTIME DESTINATION ${CMAKE_SOURCE_DIR}/bin
+)
+
+set_target_properties(counter_test PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH TRUE
+)
