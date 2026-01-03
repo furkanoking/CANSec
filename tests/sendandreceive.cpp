@@ -2,6 +2,8 @@
 #include <iostream>
 #include "CANSec.h"
 #include <cstring>
+#include "CANBusCommon.h"
+
 
 void ListeningTry(CANFDStruct myCAN) {
     std::cout<<"Geldi geldi"<<std::endl;
@@ -80,13 +82,18 @@ int main() {
     int tem_cipher_len = ciphertext.size();
     cansec.EncryptMessage(plaintext, 2, ciphertext, tem_cipher_len, tag);
 
-    my_CANFD.IncrementCounter();
-    std::cout<<" Sending Counter:"<<my_CANFD.getCounter()<<std::endl;
-    int temp_counter = my_CANFD.getCounter();
+    int temp_counter = read_counter(0x12);
+    std::array<__uint8_t,1>array_counter = {};
+    array_counter.at(0) = temp_counter;
+    
+    std::array<__uint8_t,sizeof(temp_counter)> cipher_counter = {};
+    int cipher_counter_len = cipher_counter.size();
+    cansec.EncryptMessage(array_counter, 1, cipher_counter, cipher_counter_len, tag);
+
     std::array<__uint8_t,MAX_CIPHERTEXT_LENGTH + TAG_LENGTH + COUNTER_LENGTH> data_to_send{};
     memcpy(data_to_send.data(), ciphertext.data(), tem_cipher_len);
     memcpy(data_to_send.data() + tem_cipher_len, tag.data(), TAG_LENGTH);
-    memcpy(data_to_send.data() + tem_cipher_len + TAG_LENGTH,&temp_counter, COUNTER_LENGTH);
+    memcpy(data_to_send.data() + tem_cipher_len + TAG_LENGTH,cipher_counter.data(), cipher_counter_len);
 
     int total_length = tem_cipher_len + TAG_LENGTH + COUNTER_LENGTH;
     std::cout << "Sending ciphertext length: " << tem_cipher_len << std::endl;

@@ -87,63 +87,63 @@ void CANSec::DecryptMessage(const std::span<__uint8_t> ciphertext,
     int& plaintext_len,
     std::span<__uint8_t> expected_tag) const
 {
-int len = 0;
-int plaintext_len_local = 0;
+    int len = 0;
+    int plaintext_len_local = 0;
 
-std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)> ctx(
-EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
-if (!ctx) {
-std::cerr << "Error creating cipher context." << std::endl;
-return;
-}
+    std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)> ctx(
+    EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
+    if (!ctx) {
+    std::cerr << "Error creating cipher context." << std::endl;
+    return;
+    }
 
-// 1) Decrypt init
-if (EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
-std::cerr << "Error initializing decryption." << std::endl;
-return;
-}
+    // 1) Decrypt init
+    if (EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
+    std::cerr << "Error initializing decryption." << std::endl;
+    return;
+    }
 
-// 2) Key + nonce
-if (EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr,
-   m_arrKey.data(), m_arrNonceValue.data()) != 1) {
-std::cerr << "Error setting key and nonce." << std::endl;
-return;
-}
+    // 2) Key + nonce
+    if (EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr,
+    m_arrKey.data(), m_arrNonceValue.data()) != 1) {
+    std::cerr << "Error setting key and nonce." << std::endl;
+    return;
+    }
 
-// (Varsa) AAD burada verilir
-// EVP_DecryptUpdate(ctx.get(), nullptr, &len, aad.data(), aad_len);
+    // (Varsa) AAD burada verilir
+    // EVP_DecryptUpdate(ctx.get(), nullptr, &len, aad.data(), aad_len);
 
-// 3) TAG’i ciphertext’ten ÖNCE ayarla
-if (expected_tag.size() != 16) {
-std::cerr << "Tag size is not 16!" << std::endl;
-return;
-}
+    // 3) TAG’i ciphertext’ten ÖNCE ayarla
+    if (expected_tag.size() != 16) {
+    std::cerr << "Tag size is not 16!" << std::endl;
+    return;
+    }
 
-if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG,
-    static_cast<int>(expected_tag.size()),
-    expected_tag.data()) != 1) {
-std::cerr << "Error setting tag." << std::endl;
-// İstersen: ERR_print_errors_fp(stderr);
-return;
-}
+    if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG,
+        static_cast<int>(expected_tag.size()),
+        expected_tag.data()) != 1) {
+    std::cerr << "Error setting tag." << std::endl;
+    // İstersen: ERR_print_errors_fp(stderr);
+    return;
+    }
 
-// 4) Ciphertext’i çöz
-if (ciphertext_len > 0 &&
-EVP_DecryptUpdate(ctx.get(), plaintext.data(), &len,
-  ciphertext.data(), ciphertext_len) != 1) {
-std::cerr << "Error during decryption." << std::endl;
-return;
-}
-plaintext_len_local += len;
+    // 4) Ciphertext’i çöz
+    if (ciphertext_len > 0 &&
+    EVP_DecryptUpdate(ctx.get(), plaintext.data(), &len,
+    ciphertext.data(), ciphertext_len) != 1) {
+    std::cerr << "Error during decryption." << std::endl;
+    return;
+    }
+    plaintext_len_local += len;
 
-// 5) Final + tag doğrulaması
-if (EVP_DecryptFinal_ex(ctx.get(), plaintext.data() + plaintext_len_local, &len) != 1) {
-std::cerr << "Decryption failed: tag mismatch." << std::endl;
-return;
-}
+    // 5) Final + tag doğrulaması
+    if (EVP_DecryptFinal_ex(ctx.get(), plaintext.data() + plaintext_len_local, &len) != 1) {
+    std::cerr << "Decryption failed: tag mismatch." << std::endl;
+    return;
+    }
 
-plaintext_len_local += len;
-plaintext_len = plaintext_len_local;
+    plaintext_len_local += len;
+    plaintext_len = plaintext_len_local;
 }
 
 
